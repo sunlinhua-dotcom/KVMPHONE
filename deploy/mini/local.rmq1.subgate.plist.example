@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 执行机上的 subgate（CLIProxyAPI）常驻（~/Library/LaunchAgents/local.rmq1.subgate.plist）。
+     一般不用手写：deploy/subgate-mini.sh 会生成同样的内容。YOUR_USER 和程序路径按你的安装改。 -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>local.rmq1.subgate</string>
+<key>ProgramArguments</key><array><string>/Users/YOUR_USER/.local/opt/cliproxyapi/cli-proxy-api</string><string>-config</string><string>/Users/YOUR_USER/.config/subgate/cliproxy.yaml</string></array>
+<key>WorkingDirectory</key><string>/Users/YOUR_USER/.config/subgate</string>
+<key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+<key>StandardOutPath</key><string>/Users/YOUR_USER/Library/Logs/subgate/out.log</string>
+<key>StandardErrorPath</key><string>/Users/YOUR_USER/Library/Logs/subgate/err.log</string>
+</dict></plist>

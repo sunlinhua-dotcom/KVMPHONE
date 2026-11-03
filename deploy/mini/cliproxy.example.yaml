@@ -1,0 +1,43 @@
+# subgate = CLIProxyAPI（https://github.com/router-for-me/CLIProxyAPI）的一份最小配置。
+# 只列本方案用到的键，其余照 CLIProxyAPI 自带的 config.example.yaml 默认值即可。
+# 放到 ~/.config/subgate/cliproxy.yaml，目录 700、文件 600。
+config-version: 8
+
+server:
+  host: ""          # 空 = 监听所有网卡，局域网里的 OpenClaw 才连得到；只给本机用就写 127.0.0.1
+  port: 8317
+
+management:
+  allow-remote: false
+  secret-key: ""
+
+access:
+  api-keys:
+    # 客户端（OpenClaw）带的 Bearer key。自己生成一个长随机串，同一个值写进 ~/.config/subgate/client_key（600）。
+    # 生成：python3 -c 'import secrets; print("sk-" + secrets.token_urlsafe(32))'
+    - "<your-client-key>"
+
+routing:
+  strategy: "round-robin"
+  retry:
+    request-retry: 3
+    max-retry-interval: 30
+
+requests:
+  proxy-url: ""     # 执行机要经代理才出得去就填，例如 http://127.0.0.1:7890
+
+oauth:
+  # 账号登录凭据目录：用 cli-proxy-api 自带的登录命令登录 Antigravity / Gemini 账号后生成。
+  # 这个目录和 client_key 绝不进仓库、不拷给别人。
+  auth-dir: "/Users/YOUR_USER/.config/subgate/auth"
+  providers:
+    antigravity:
+      antigravity-credits: true
+
+observability:
+  logs:
+    debug: false
+    logging-to-file: false
+    request-log: false
+  usage:
+    usage-statistics-enabled: false

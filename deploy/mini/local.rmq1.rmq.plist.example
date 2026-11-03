@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 执行机上的 rmq worker 常驻（~/Library/LaunchAgents/local.rmq1.rmq.plist）。
+     一般不用手写：rmq/install-service.sh on worker 会生成同样的内容。YOUR_USER 换成执行机用户名。
+     必须装在登录用户的 gui 域：agy 的谷歌登录态在钥匙串里，ssh 会话里跑 agy 会报未登录。 -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>local.rmq1.rmq</string>
+<key>ProgramArguments</key><array><string>/usr/bin/python3</string><string>/Users/YOUR_USER/rmq1/rmq/rmq.py</string><string>worker</string></array>
+<key>EnvironmentVariables</key><dict><key>PATH</key><string>/Users/YOUR_USER/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+<key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+<key>StandardOutPath</key><string>/Users/YOUR_USER/.rmq/worker.log</string><key>StandardErrorPath</key><string>/Users/YOUR_USER/.rmq/worker.log</string>
+</dict></plist>

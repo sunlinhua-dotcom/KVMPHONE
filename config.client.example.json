@@ -1,0 +1,10 @@
+{
+  "_说明": "入口机（跑 OpenClaw / 你自己敲 rmq 的那台）上的 ~/.rmq/config.json。remote 是执行机的 ssh 别名：ask / ls / show / cancel 都经 ssh 转过去，本机跑 rmq relay 负责交付。",
+  "remote": "macmini",
+  "openclaw": "~/.openclaw/tmp/agent-cli/openclaw",
+  "notify": "feishu:ou_xxxxxxxxxxxxxxxx",
+  "feishu_account": "rmq1",
+  "_notify_说明": "做完的任务发到哪个飞书用户（open_id）；留空或写 none 就只走 decide（如果装了）。",
+  "decide": "",
+  "_decide_说明": "可选：作者自用的决策板命令行（推结果卡、人工接管卡）。没有就留空，接管请求会等到超时。"
+}

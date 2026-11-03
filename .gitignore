@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# 运行时产物与凭据（桥会在 kvmphone/ 下写这两个）
+kvmphone/.glkvm_token
+kvmphone/.space
+kvmphone/ocr
+kvmphone/vendor/
+rmq/bin/
+
+# 本地配置
+.env
+config.json
+*.log

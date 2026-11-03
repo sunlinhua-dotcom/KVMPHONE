@@ -1,0 +1,86 @@
+// OpenClaw 配置片段：飞书「手机」机器人（rmq1 agent）+ 两个 subgate provider。
+// 这不是完整配置，按层级合并进你的 ~/.openclaw/openclaw.json；改完重启网关。
+// 所有 key / app secret 都不写在这里：subgate 的 client key 走 secrets file provider，飞书凭据由 OpenClaw 自己的向导写入。
+{
+  "models": {
+    "providers": {
+      // 执行机（Mac mini）上常驻的 subgate（CLIProxyAPI :8317）。主用：mini 那条线连谷歌更快更稳。
+      "subgatemini": {
+        "baseUrl": "http://your-mini.local:8317/v1",
+        "api": "openai-completions",
+        "apiKey": { "source": "file", "provider": "subgatekey", "id": "value" },
+        "models": [
+          {
+            "id": "gemini-3.8-flash-high",
+            "name": "Gemini 3.8 Flash（经执行机）",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 1000000,
+            "maxTokens": 65536
+          }
+        ],
+        // 必须有：OpenClaw 默认的 SSRF 防护会拦局域网地址（日志 SsrFBlockedError），不报错、静默回落到下一个模型
+        "request": { "allowPrivateNetwork": true }
+      },
+      // 入口机本机的 subgate，执行机不在线时秒回落
+      "subgate": {
+        "baseUrl": "http://127.0.0.1:8317/v1",
+        "api": "openai-completions",
+        "apiKey": { "source": "file", "provider": "subgatekey", "id": "value" },
+        "models": [
+          {
+            "id": "gemini-3.8-flash-high",
+            "name": "Gemini 3.8 Flash（本机）",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 1000000,
+            "maxTokens": 65536
+          }
+        ]
+      }
+    }
+  },
+
+  // client key 只放在这个 600 文件里（和 cliproxy.yaml 的 access.api-keys 是同一个值）
+  "secrets": {
+    "providers": {
+      "subgatekey": { "source": "file", "path": "~/.config/subgate/client_key", "mode": "singleValue" }
+    }
+  },
+
+  "agents": {
+    "entries": {
+      "rmq1": {
+        "name": "rmq1",
+        "workspace": "~/.openclaw/workspace-rmq1",
+        "identity": { "name": "rmq1" },
+        "model": {
+          "primary": "subgatemini/gemini-3.8-flash-high",
+          // 回落顺序：本机 subgate → 你自己的其他 provider（作者用的是本地 agy-cli 插件跑 Gemini 4 Argon、再退 DeepSeek，两者都不在本仓库）
+          "fallbacks": [
+            "subgate/gemini-3.8-flash-high",
+            "agy-cli/gemini-4-argon-low",
+            "dsapi/deepseek-flash"
+          ]
+        },
+        // 机器人只做「整理需求 → exec rmq ask」，low 足够；每轮 3.5–4.3 秒
+        "thinkingDefault": "low",
+        "modelPolicy": {
+          "allow": [
+            "subgatemini/gemini-3.8-flash-high",
+            "subgate/gemini-3.8-flash-high",
+            "agy-cli/gemini-4-argon-low",
+            "dsapi/deepseek-flash"
+          ]
+        }
+      }
+    }
+  },
+
+  // 飞书账号 rmq1 的消息路由给 rmq1 agent（账号本身用 OpenClaw 的飞书向导添加）
+  "bindings": [
+    { "type": "route", "agentId": "rmq1", "match": { "channel": "feishu", "accountId": "rmq1" } }
+  ]
+}

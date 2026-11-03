@@ -1,0 +1,27 @@
+{
+  "_说明": "执行机（Mac mini）上的 ~/.rmq/config.json。拷过去后把 YOUR_USER 换成执行机的用户名；以 _ 开头的键 rmq 不读，可以删。",
+  "deliver": "relay",
+  "kp": "/Users/YOUR_USER/.local/bin/kp",
+  "claude": "/Users/YOUR_USER/.local/bin/claude",
+  "agy_bin": "/Users/YOUR_USER/.local/bin/agy",
+
+  "driver": "gemini-3.8-flash-low",
+  "gemini_local": true,
+  "warm_model": "gemini-3.8-flash-low",
+  "_driver_说明": "driver 以 gemini 开头走 agy（Antigravity CLI）；rmq ask --driver cc 走原生 Claude Code 驱动（claude -p + DeepSeek 兼容端点）。gemini_local=true 表示 agy 就在这台执行机上跑，并常驻一个预热进程（warm_model）。",
+
+  "ds_key_file": "~/.config/deepseek/api_key",
+  "ds_base": "https://api.deepseek.com/anthropic",
+  "ds_model": "deepseek-flash",
+  "ds_nothink": true,
+  "_ds_说明": "只有 --driver cc 用得到。ds_key_file 是一个只放 key 的 600 文件；ds_nothink=true 时经 rmq/dsnothink.py（127.0.0.1:7678）把 thinking 关掉。",
+
+  "attempts": 1,
+  "review": false,
+  "review_api": "~/.config/glm/rmq.json",
+  "review_model": "glm-5.3-flash",
+  "_review_说明": "review=false 时只做本地自检（信驾驶写的 result.json + 付款痕迹检查）。要模型复核就删掉 review、attempts 改 2；review_api 文件内容是 {\"base\": \"Anthropic 兼容端点\", \"key\": \"…\"}。",
+
+  "max_runtime": 1500,
+  "default_dev": "rmq1"
+}

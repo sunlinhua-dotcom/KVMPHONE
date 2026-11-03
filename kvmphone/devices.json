@@ -1,0 +1,37 @@
+{
+  "_说明": "kp 设备表：每台 KVM 一部手机、一个桥。host 是桥所在机器的 ssh 别名，hosts 里写它的主机名（hostname -s）；kp 在别的机器上跑就整条命令经 ssh 转过去。改完同步到执行机的 ~/rmq1/kvmphone/。",
+  "default": "rmq1",
+  "hosts": {
+    "macmini": [
+      "YOUR-MINI-HOSTNAME"
+    ],
+    "laptop": [
+      "YOUR-LAPTOP-HOSTNAME"
+    ]
+  },
+  "devices": {
+    "rmq1": {
+      "name": "RMQ1 · GLKVM（https://glkvm.local）",
+      "kind": "glkvm",
+      "host": "macmini",
+      "port": 7690,
+      "mouse": "phone",
+      "crop": [
+        710,
+        1213
+      ]
+    },
+    "ip7": {
+      "name": "iPhone · WebDriverAgent（数据线插执行机，可选）",
+      "kind": "wda",
+      "host": "macmini",
+      "port": 7692,
+      "start": [
+        "python3",
+        "{DIR}/wda_bridge.py",
+        "--port",
+        "7692"
+      ]
+    }
+  }
+}

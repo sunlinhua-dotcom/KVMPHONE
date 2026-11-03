@@ -1,0 +1,119 @@
+{
+ "_safari": [
+  193,
+  997
+ ],
+ "_说明": "kp open <App> [关键词] 用的直达链接。{q} 换成 URL 编码后的关键词。ok=true 表示 11-03 真机验证过能直达搜索结果页；false 的是没装或没验证，照常点图标。",
+ "小红书": {
+  "alias": [
+   "xhs",
+   "红书"
+  ],
+  "home": "xhsdiscover://",
+  "search": "xhsdiscover://search/result?keyword={q}",
+  "ok": true
+ },
+ "抖音": {
+  "alias": [
+   "douyin",
+   "dy"
+  ],
+  "home": "snssdk1128://",
+  "search": "snssdk1128://search/result?keyword={q}",
+  "ok": true
+ },
+ "微博": {
+  "alias": [
+   "weibo",
+   "wb"
+  ],
+  "home": "sinaweibo://",
+  "search": "sinaweibo://searchall?q={q}",
+  "ok": false,
+  "note": "11-03 Safari 报地址无效：手机上没装"
+ },
+ "淘宝": {
+  "alias": [
+   "taobao",
+   "tb",
+   "天猫"
+  ],
+  "home": "taobao://",
+  "search": "taobao://s.taobao.com/search?q={q}",
+  "ok": true
+ },
+ "京东": {
+  "alias": [
+   "jd",
+   "京东秒送"
+  ],
+  "home": "openapp.jdmobile://",
+  "search": "openapp.jdmobile://virtual?params={\"category\":\"jump\",\"des\":\"productList\",\"keyWord\":\"{q}\",\"from\":\"search\"}",
+  "ok": true
+ },
+ "美团": {
+  "alias": [
+   "meituan",
+   "mt",
+   "美团闪购"
+  ],
+  "home": "imeituan://",
+  "search": "imeituan://www.meituan.com/search?q={q}",
+  "ok": true
+ },
+ "拼多多": {
+  "alias": [
+   "pdd"
+  ],
+  "home": "pinduoduo://",
+  "search": "pinduoduo://com.xunmeng.pinduoduo/search_result.html?search_key={q}",
+  "ok": true
+ },
+ "淘宝闪购": {
+  "alias": [
+   "饿了么",
+   "eleme",
+   "elm"
+  ],
+  "home": "eleme://",
+  "search": "eleme://search_result?keyword={q}",
+  "ok": true
+ },
+ "哔哩哔哩": {
+  "alias": [
+   "b站",
+   "B站",
+   "bilibili"
+  ],
+  "home": "bilibili://",
+  "search": "bilibili://search?keyword={q}",
+  "ok": true
+ },
+ "知乎": {
+  "alias": [
+   "zhihu"
+  ],
+  "home": "zhihu://",
+  "search": "zhihu://search?q={q}",
+  "ok": false,
+  "note": "11-03 Safari 报地址无效：手机上没装"
+ },
+ "大众点评": {
+  "alias": [
+   "点评",
+   "dianping"
+  ],
+  "home": "dianping://",
+  "search": "dianping://searchshoplist?keyword={q}",
+  "ok": true
+ },
+ "微信": {
+  "alias": [
+   "wechat",
+   "weixin"
+  ],
+  "home": "weixin://",
+  "search": null,
+  "ok": true
+ }
+}
