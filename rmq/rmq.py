@@ -110,7 +110,11 @@ def ask(args):
     ahead = sum(1 for j in jobs() if j["status"] in ("queued", "running", "reviewing") and j["id"] != jid
                 and j.get("dev", "rmq1") == dev)
     print(jid)
-    print(f"已排进 {dev} 的队列，前面还有 {ahead} 个任务；单个任务通常 10–25 分钟。", file=sys.stderr)
+    # 11-04：排位写进 stdout，飞书机器人照这行回复；之前写死「已排队」，前面没任务也说排队
+    if ahead:
+        print(f"排队中：{dev} 前面还有 {ahead} 个任务；单个任务通常 10–25 分钟。")
+    else:
+        print(f"马上开始：{dev} 前面没有任务，几秒内开跑（手机若正被直控占着，会等它放手）；通常 10–25 分钟出结论。")
 
 
 def jobs():
@@ -522,13 +526,17 @@ def brief_msg(job, ok, answer):
 
 def deliver(job, c, ok, answer, extra):
     head, line, label, items, b, foot = brief_parts(job, ok, answer)
-    title = f"{head.split(' ', 1)[1]} · {job['title']}：{line}"[:180]
+    # 结论不再截 180 字（2594 截在半句「不」上）：decide v62 起超过 60 字的标题从「：」切开，
+    # 前半「办好了 · 任务名」当标题，结论整段按正文字号排在下面（11-03）
+    title = f"{head.split(' ', 1)[1]} · {job['title']}：{line}"
     facts = [f"{label}{i}={s}" for i, s in enumerate(items, 1)]
     facts += [f"{n}={b[k]}" for k, n in (("todo", "没做完"), ("why", "为什么"), ("leftover", "手机上留下")) if b.get(k)]
+    task = " ".join(job["task"].split())  # 任务原文可能上千字带换行，补充信息里只留开头，全文 rmq show 看
     if c.get("decide"):
         try:  # decide 的 --fact 只认「键=值」（11-01 前写成「任务 xxx：…」，推卡全失败且没记日志）
             r = subprocess.run([c["decide"], "q", "-p", job["project"], "--pname", c["decide_pname"],
-                                *sum((["--fact", f] for f in facts), []), "--fact", f"任务={job['id']}：{job['task']}",
+                                *sum((["--fact", f] for f in facts), []),
+                                "--fact", f"任务={job['id']}：{task[:120]}{'…（全文 rmq show ' + job['id'] + '）' if len(task) > 120 else ''}",
                                 "--fact", f"复核细节={extra[:400]}",
                                 title, "收到", "再跑一遍::手机再占 10–25 分钟", "要改::写清哪里要改", "--rec", "1"],
                                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60)

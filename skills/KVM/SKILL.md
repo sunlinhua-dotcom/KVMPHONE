@@ -11,7 +11,7 @@ GLKVM（GL.iNet Comet 一类 IP-KVM）把 iPhone 画面经 HDMI 采进来、用 
 
 ## 两种用法
 
-**1. 交一个完整任务（默认）**：`rmq ask -t "<10 字标题>" "<把要求写完整：平台、地址、时间、硬条件、要比什么>"`，打印任务 id 就结束，不要等。只读任务十几秒，多平台比价几分钟，做完推飞书。
+**1. 交一个完整任务（默认）**：`rmq ask -t "<10 字标题>" "<把要求写完整：平台、地址、时间、硬条件、要比什么>"`，第一行打印任务 id、第二行打印排位（「马上开始」或「排队中：前面还有 N 个任务」），看完就结束，不要等。只读任务十几秒，多平台比价几分钟，做完推飞书。
 - 查：`rmq ls`、`rmq show <id>`；取消排队：`rmq cancel <id>`；自检：`rmq doctor`。
 - 跑着时补一句：`rmq say <id> "话"`；叫停：`rmq stop <id> [原因]`（手机马上停、已拿到的照常交付）。
 - 换驾驶模型：默认 Gemini 3.8 Flash（low，执行机本机跑 agy，带预热池）；`--driver gemini-3.8-flash-high` 换高思考档；`--driver cc` 走原生 Claude Code 驱动（claude -p + DeepSeek 兼容端点）。
