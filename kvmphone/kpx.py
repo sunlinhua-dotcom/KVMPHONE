@@ -10,7 +10,7 @@
   插话 / 叫停  rmq say / rmq stop 写进任务目录，kp 每条命令开头转给驾驶模型
 状态都在 /tmp/kvmphone/（桥所在那台机器）。
 """
-import json, os, random, re, shutil, subprocess, sys, time, unicodedata
+import atexit, json, os, random, re, shutil, subprocess, sys, time, unicodedata
 from pathlib import Path
 
 DIR = Path(__file__).resolve().parent
@@ -47,6 +47,45 @@ def norm(s):
 def init(dev, owner):
     global DEV, OWNER
     DEV, OWNER = dev, owner
+    if os.environ.get("KP_T0") and os.environ.get("KP_BUDGET"):
+        atexit.register(budget_line)
+
+
+# ───────────── 预算行 ─────────────
+def _mmss(sec):
+    sec = max(int(sec), 0)
+    return f"{sec // 60}:{sec % 60:02d}"
+
+
+def budget_line():
+    """每条 kp 输出的最后一行：「[预算 已用 11:20/25:00 · 已点开 N]」。
+    已用 = 现在 - KP_T0 - 等用户接手的时间（rmq 写在任务目录 budget.json，t0 对得上才认）。
+    已点开 = 本轮 kp.jsonl 里 tap / open 命令的条数（含这一条）；读不到日志就只显示时间。"""
+    try:
+        t0, total = float(os.environ["KP_T0"]), float(os.environ["KP_BUDGET"])
+        waited = 0.0
+        if JOB:
+            try:
+                b = json.loads((Path(JOB) / "budget.json").read_text())
+                if str(b.get("t0")) == os.environ["KP_T0"]:
+                    waited = float(b.get("waited") or 0)
+            except Exception:
+                pass
+        parts = [f"已用 {_mmss(time.time() - t0 - waited)}/{_mmss(total)}"]
+        lg = os.environ.get("KP_LOG")
+        if lg and os.path.exists(lg):
+            n = 0
+            with open(lg, errors="ignore") as f:
+                for line in f:
+                    try:
+                        if json.loads(line).get("cmd") in ("tap", "open"):
+                            n += 1
+                    except Exception:
+                        pass
+            parts.append(f"已点开 {n}")
+        say("[预算 " + " · ".join(parts) + "]")
+    except Exception:
+        pass
 
 
 def say(msg):
@@ -315,6 +354,13 @@ def steer(acting):
         for line in lines[n:]:
             say(f"[用户插话] {line}（照这句调整，和原任务冲突时以这句为准）")
         seen.write_text(str(len(lines)))
+    bt, bs = j / "budget.txt", j / "budget.seen"   # 预算提醒（rmq 写）：独立通道，不当用户插话，不带「以这句为准」
+    if bt.exists():
+        lines = bt.read_text().splitlines()
+        n = int(bs.read_text() or 0) if bs.exists() else 0
+        for line in lines[n:]:
+            say(f"[系统预算] {line}")
+        bs.write_text(str(len(lines)))
     if (j / "stop").exists() and acting:
         why = (j / "stop").read_text().strip()
         say(f"[用户叫停] {why or '用户让停下'}：不要再操作手机，把已经拿到的写进 result.json 后结束。")

@@ -115,5 +115,18 @@
   "home": "weixin://",
   "search": null,
   "ok": true
+ },
+ "闲鱼": {
+  "alias": [
+   "xianyu",
+   "咸鱼",
+   "fleamarket",
+   "goofish"
+  ],
+  "home": "fleamarket://",
+  "search": "fleamarket://search?keyword={q}",
+  "search_box": "搜索你要的宝贝",
+  "ok": true,
+  "note": "11-06 实测：scheme 只开到搜索页，关键词带不进；kp 自动点框敲词回车（只限英文数字）。searchresult / search_result 等路由会显示「版本太老」"
  }
 }

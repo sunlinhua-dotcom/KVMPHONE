@@ -12,6 +12,8 @@ const path = await import("node:path");
 
 const DIR = process.env.KP_DIR || decodeURIComponent(new URL(".", import.meta.url).pathname).replace(/\/$/, "");
 const RUN = "/tmp/kvmphone";
+// GLKVM 自签证书授权过期时按登记指纹核对后放行（11-09 用户确认，见 glkvm_cert.mjs）
+const { gotoGLKVM } = await import(`file://${DIR}/glkvm_cert.mjs`);
 const PORT = 7690;
 const SPACE = Number((await fs.readFile(`${DIR}/.space`, "utf8").catch(() => "")).trim());
 await fs.mkdir(RUN, { recursive: true });
@@ -37,7 +39,7 @@ const PASSF = `${process.env.HOME}/.config/kvmphone/glkvm_pass`;
 const atLogin = async () => /\/(login|init)/.test(String(await page.url()));
 // 每次整页重载记一笔原因（排查页面频繁刷新用），文件 /tmp/kvmphone/reload.log
 const rlog = (m) => fs.appendFile(`${RUN}/reload.log`, `${new Date().toISOString()} pid=${process.pid} ${m}\n`).catch(() => {});
-const reload = async () => { rlog("reload " + (new Error().stack.split("\n")[2] || "").trim()); await page.goto("about:blank"); await page.goto("https://glkvm.local/#/"); await page.waitForTimeout(3000); };
+const reload = async () => { rlog("reload " + (new Error().stack.split("\n")[2] || "").trim()); await page.goto("about:blank"); await gotoGLKVM(page, "https://glkvm.local/#/", DIR, rlog); await page.waitForTimeout(3000); };
 const putToken = (t) => page.evaluate((t) => {
   localStorage.setItem("gl-kvm-token-key", t); localStorage.setItem("gl-kvm-token-keys", JSON.stringify({ glkvm: t }));
   document.cookie = `auth_token=${t}; path=/; secure; samesite=none`;
@@ -187,12 +189,22 @@ const INJECT = () => {
   // 变化像素数（灰度差 > 18 算变；H.264 静止画面的压缩噪声在这之下）
   const ndiff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 18) n++; return n; };
   let readThumb = null;
+  // K1：严格比对（灰度差 > 10 算变，变化像素 ≤ 1），给 /act 的 expect 校验用，比 unchanged() 灵敏，小按钮上的字变了也更容易发现
+  const ndiffS = (a, b) => { let n = 0; for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 10) n++; return n; };
   window.__kp = {
     setCrop(c) { crop = c; },
     setCur(x, y) { cur = { x, y }; },
     markRead() { readThumb = thumb(); },
     // 上次读屏之后画面没变（变化像素 ≤ 3）就返回 true，读屏可直接用缓存
     unchanged() { return !!readThumb && ndiff(readThumb, thumb()) <= 3; },
+    unchangedStrict() { return !!readThumb && ndiffS(readThumb, thumb()) <= 1; },
+    // 这次读屏那一帧的缩略图指纹（FNV-1a，灰度量化到 16 档）：只用来认「是哪一次读屏」，真正比画面用上面的像素比对
+    thumbId() {
+      if (!readThumb) return null;
+      let h = 2166136261;
+      for (let i = 0; i < readThumb.length; i++) { h ^= readThumb[i] >> 4; h = Math.imul(h, 16777619) >>> 0; }
+      return h.toString(16);
+    },
     // 等画面静止：先等 min ms，之后每 40 ms 比一次，连续 quiet ms 变化 < 1.2% 就返回；超过 max 返回 stable=false
     async settle(min = 150, quiet = 200, max = 1500) {
       const t0 = performance.now(); await sleep(min);
@@ -290,7 +302,7 @@ const INJECT = () => {
   return "installed";
 };
 let __booted = false;
-const KPVER = "15";
+const KPVER = "16";  // K1：页面里新增 unchangedStrict / thumbId，版本号加一让旧页面重新注入
 // 鼠标映射：桥跑在 EGO 的 Node 里，环境变量不一定传得进来，直接读设备表里 glkvm 那台的 mouse
 const GDEV = await fs.readFile(`${DIR}/devices.json`, "utf8").then((t) => Object.values(JSON.parse(t).devices).find((d) => d.kind === "glkvm") || {}).catch(() => ({}));
 const MOUSE = GDEV.mouse || "frame";
@@ -375,14 +387,20 @@ const server = http.createServer(async (req, res) => {
     if (u.pathname === "/read") {
       // ?settle=最少等的毫秒：先在页面里比缩略图等画面静止（0.2 s 不动），再只 OCR 一次
       // ?cache=1：上次读屏后画面没变（15 秒内）就直接返回上次结果，省一次 OCR
+      // ?fresh=秒（K1）：上次读屏是「等稳了」的、不超过这么多秒（上限 8）、且画面严格没变，才返回缓存；否则照常完整 settle 读屏
       const st = u.searchParams.get("settle"), useCache = u.searchParams.get("cache") === "1";
+      const freshSec = Math.min(Number(u.searchParams.get("fresh")) || 0, 8);
       const once = async () => {
         await ensure();
-        if (useCache && lastRead && Date.now() - lastRead.at < 15000 && await page.evaluate(() => window.__kp.unchanged())) return { ...lastRead.r, cached: true };
+        if (useCache && lastRead && Date.now() - lastRead.at < 15000 && await page.evaluate(() => window.__kp.unchanged())) return { ...lastRead.r, cached: true, frame_ms: 0, ocr_ms: 0 };  // K0：缓存命中没有截帧 / OCR，别带回上次的旧耗时
+        if (freshSec > 0 && lastRead && lastRead.r.stable === true && lastRead.r.items.length >= 3 && Date.now() - lastRead.at < freshSec * 1000 && await page.evaluate(() => window.__kp.unchangedStrict())) return { ...lastRead.r, cached: true, fresh_hit: true, age_ms: Date.now() - lastRead.at, frame_ms: 0, ocr_ms: 0 };
         const s = st !== null ? await page.evaluate(([m]) => window.__kp.settle(m, 250, 2500), [Number(st) || 150]) : null;
         // 缩略图要和读屏那一帧同时截：OCR 要 0.4 s，期间画面变了的话缓存会以为没变、返回旧结果
-        const g = await grab(0.9); await page.evaluate(() => window.__kp.markRead());
+        const tf = Date.now();
+        const g = await grab(0.9); g.thumb = await page.evaluate(() => { window.__kp.markRead(); return window.__kp.thumbId(); });
+        const to = Date.now();
         g.items = await runOcr(g.img);
+        g.frame_ms = to - tf; g.ocr_ms = Date.now() - to;  // K0 计时：截帧 / OCR 各花多久（只是带回，不改流程）
         if (s) { g.stable = s.stable; g.settle_ms = s.ms; g.trace = s.trace; }
         lastRead = { at: Date.now(), r: g };
         return g;
@@ -392,9 +410,26 @@ const server = http.createServer(async (req, res) => {
     }
     if (u.pathname === "/act" && req.method === "POST") {
       const b = await body(req);
+      // 手势序列上限：kp up / down 每批最多 8 次滑动（每次 2 个动作），超长序列会拖过客户端超时变成 500，直接 400 讲清楚
+      const MAX_OPS = 40;
+      if (!Array.isArray(b.ops) || !b.ops.length) return send(res, 400, { error: "ops 必须是非空数组" });
+      if (b.ops.length > MAX_OPS) return send(res, 400, { error: `手势序列太长（${b.ops.length} 个动作，上限 ${MAX_OPS}）；请拆成多批发送，kp up / down 每批不超过 8 次` });
       const t0 = Date.now();
-      await serial(async () => { await ensure(); await runOps(b.ops); });
-      return send(res, 200, { ok: true, ms: Date.now() - t0 });
+      let t1 = t0;
+      // K1：expect.thumb 是 kp 拿来做护栏判定的那次读屏的指纹。同一临界区内（排队之后、HID 动作之前）核对：
+      // 不是同一次读屏（中间别人读过或画面换过）、或画面严格比对有变化，就不发任何 HID，回 stale:true 让 kp 重读重判
+      let stale = false;
+      await serial(async () => {
+        await ensure(); t1 = Date.now();
+        if (b.expect && b.expect.thumb) {
+          const ok = lastRead && lastRead.r.thumb === b.expect.thumb && await page.evaluate(() => window.__kp.unchangedStrict());
+          if (!ok) { stale = true; return; }
+        }
+        await runOps(b.ops);
+      });
+      if (stale) return send(res, 200, { ok: false, stale: true, ms: Date.now() - t0, queue_ms: t1 - t0 });
+      // K0 计时：ms 含排队 + ensure；ops_ms 只是执行动作本身。/act 不读屏，所以没有 settle_ms / ocr_ms / frame_ms
+      return send(res, 200, { ok: true, ms: Date.now() - t0, ops_ms: Date.now() - t1, queue_ms: t1 - t0 });
     }
     // 退出要整个进程退：只关 HTTP 的话看门狗还在，会按旧版本号把新桥的页面整页重载（10-31 实测 mini 上残留 6 个桥互相刷页面）
     if (u.pathname === "/quit") { send(res, 200, { ok: true }); clearInterval(watchdog); server.close(); ocr.kill(); setTimeout(() => process.exit(0), 300); return; }
